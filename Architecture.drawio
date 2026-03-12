@@ -1,0 +1,54 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36" version="29.3.8">
+  <diagram name="Page-1" id="BsnxSthze1Rp79VFWE2t">
+    <mxGraphModel dx="751" dy="487" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="U9nTbatvluGDaEpRX9MF-4" edge="1" parent="1" source="U9nTbatvluGDaEpRX9MF-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="U9nTbatvluGDaEpRX9MF-3" value="Store Embeddings inside a Vector DB">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="U9nTbatvluGDaEpRX9MF-2" parent="1" style="whiteSpace=wrap;html=1;" value="Uploads notebook sources." vertex="1">
+          <mxGeometry height="60" width="120" x="200" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="U9nTbatvluGDaEpRX9MF-3" parent="1" style="shape=datastore;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="60" width="60" x="230" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="U9nTbatvluGDaEpRX9MF-9" edge="1" parent="1" source="U9nTbatvluGDaEpRX9MF-6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="U9nTbatvluGDaEpRX9MF-2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="U9nTbatvluGDaEpRX9MF-11" edge="1" parent="1" source="U9nTbatvluGDaEpRX9MF-6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="U9nTbatvluGDaEpRX9MF-10">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="U9nTbatvluGDaEpRX9MF-6" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" value="User" vertex="1">
+          <mxGeometry height="60" width="30" x="410" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="U9nTbatvluGDaEpRX9MF-19" edge="1" parent="1" source="U9nTbatvluGDaEpRX9MF-10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="U9nTbatvluGDaEpRX9MF-18" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="U9nTbatvluGDaEpRX9MF-10" parent="1" style="whiteSpace=wrap;html=1;" value="Asks question" vertex="1">
+          <mxGeometry height="60" width="120" x="530" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="U9nTbatvluGDaEpRX9MF-17" edge="1" parent="1" source="U9nTbatvluGDaEpRX9MF-15" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="U9nTbatvluGDaEpRX9MF-16" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="U9nTbatvluGDaEpRX9MF-15" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Pass question and relevant sources to LLM" vertex="1">
+          <mxGeometry height="60" width="120" x="530" y="310.0000000000001" as="geometry" />
+        </mxCell>
+        <mxCell id="U9nTbatvluGDaEpRX9MF-16" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Return Answer (with citations)" vertex="1">
+          <mxGeometry height="60" width="120" x="530" y="410.0000000000001" as="geometry" />
+        </mxCell>
+        <mxCell id="U9nTbatvluGDaEpRX9MF-21" edge="1" parent="1" source="U9nTbatvluGDaEpRX9MF-18" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;edgeStyle=orthogonalEdgeStyle;endArrow=classic;endFill=1;startArrow=classic;startFill=1;elbow=vertical;" target="U9nTbatvluGDaEpRX9MF-3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="U9nTbatvluGDaEpRX9MF-25" edge="1" parent="1" source="U9nTbatvluGDaEpRX9MF-18" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="U9nTbatvluGDaEpRX9MF-15" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="U9nTbatvluGDaEpRX9MF-18" parent="1" style="whiteSpace=wrap;html=1;" value="Vector Search" vertex="1">
+          <mxGeometry height="60" width="120" x="530" y="210" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
