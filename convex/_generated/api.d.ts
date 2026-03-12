@@ -8,13 +8,23 @@
  * @module
  */
 
+import type * as llm from "../llm.js";
+import type * as messages from "../messages.js";
+import type * as notebooks from "../notebooks.js";
+import type * as sources from "../sources.js";
+
 import type {
   ApiFromModules,
   FilterApi,
   FunctionReference,
 } from "convex/server";
 
-declare const fullApi: ApiFromModules<{}>;
+declare const fullApi: ApiFromModules<{
+  llm: typeof llm;
+  messages: typeof messages;
+  notebooks: typeof notebooks;
+  sources: typeof sources;
+}>;
 
 /**
  * A utility for referencing Convex functions in your app's public API.
