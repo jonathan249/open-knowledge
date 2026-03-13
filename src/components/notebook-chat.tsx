@@ -92,7 +92,8 @@ export function NotebookChat({ notebookId }: { notebookId: Id<"notebooks"> }) {
                     {/* <div className="markdown-content whitespace-pre-wrap text-[#171717] dark:text-[#f3f3ef]"> */}
                     {/* <Markdown>{message.content || " "}</Markdown> */}
                     <Streamdown
-                    mode={message.isComplete ? "static" : "streaming"}
+                      className="max-w-none [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-1"
+                      mode={message.isComplete ? "static" : "streaming"}
                       key={message._id}
                       animated
                       isAnimating={!message.isComplete}
