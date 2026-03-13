@@ -31,6 +31,18 @@ export default defineSchema({
     documentId: v.id("documents"),
     text: v.string(),
     embeddingId: v.union(v.id("embeddings"), v.null()),
+    pageStart: v.optional(v.number()),
+    pageEnd: v.optional(v.number()),
+    section: v.optional(v.string()),
+    chunkType: v.optional(
+      v.union(
+        v.literal("heading"),
+        v.literal("paragraph"),
+        v.literal("list"),
+        v.literal("table"),
+        v.literal("code"),
+      ),
+    ),
   })
     .index("by_documentId", ["documentId"])
     .index("by_embeddingId", ["embeddingId"]),

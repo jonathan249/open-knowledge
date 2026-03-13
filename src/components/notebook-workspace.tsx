@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, type ChangeEvent } from "react";
 import { useQuery } from "convex/react";
 import { ChevronDown } from "lucide-react";
+import { useRouter } from "next/navigation";
 import type { Id } from "../../convex/_generated/dataModel";
 import { api } from "../../convex/_generated/api";
 import { NotebookChat } from "@/components/notebook-chat";
@@ -19,6 +20,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export function NotebookWorkspace({ notebookId }: { notebookId: string }) {
+  const router = useRouter();
   const typedNotebookId = useMemo(
     () => notebookId as Id<"notebooks">,
     [notebookId],
@@ -26,6 +28,7 @@ export function NotebookWorkspace({ notebookId }: { notebookId: string }) {
   const notebook = useQuery(api.notebooks.getNotebook, {
     notebookId: typedNotebookId,
   });
+  const notebooks = useQuery(api.notebooks.listNotebooks, {});
 
   if (notebook === undefined) {
     return (
@@ -61,19 +64,45 @@ export function NotebookWorkspace({ notebookId }: { notebookId: string }) {
     );
   }
 
+  const notebookOptions =
+    notebooks?.some((candidate) => candidate._id === notebook._id)
+      ? notebooks
+      : [notebook, ...(notebooks ?? [])];
+
+  const handleNotebookSwitch = (event: ChangeEvent<HTMLSelectElement>) => {
+    const nextNotebookId = event.target.value.trim();
+    if (!nextNotebookId || nextNotebookId === notebookId) {
+      return;
+    }
+
+    router.push(`/${nextNotebookId}`);
+  };
+
   return (
     <main className="min-h-screen px-4 text-[#171717] dark:bg-[#111111] dark:text-[#f3f3ef] sm:px-6">
       <div className="mx-auto flex w-full max-w-214 flex-col">
         <Tabs defaultValue="chat" className="flex-1">
           <div className="sticky top-0 z-20 -mx-4 mb-6 bg-white/50 px-4 pb-3 backdrop-blur dark:bg-[#111111]/95 sm:-mx-6 sm:px-6">
             <div className="mb-7 flex items-start justify-between gap-4 pt-4">
-              <button
-                type="button"
-                className="inline-flex items-center gap-1.5 rounded-md px-1 py-1 text-left text-sm font-medium tracking-[-0.02em] text-[#171717] transition hover:opacity-70 dark:text-[#f3f3ef]"
-              >
-                <span className="truncate">{notebook.name}</span>
-                <ChevronDown className="size-4 stroke-[1.75] text-[#171717] dark:text-[#f3f3ef]" />
-              </button>
+              <div className="relative max-w-[75vw]">
+                <label htmlFor="workspace-notebook-switch" className="sr-only">
+                  Switch notebook
+                </label>
+                <select
+                  id="workspace-notebook-switch"
+                  value={notebookId}
+                  onChange={handleNotebookSwitch}
+                  disabled={notebooks === undefined}
+                  className="w-full appearance-none rounded-md bg-transparent py-1 pl-1 pr-7 text-sm font-medium tracking-[-0.02em] text-[#171717] outline-none transition hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-80 dark:text-[#f3f3ef]"
+                >
+                  {notebookOptions.map((option) => (
+                    <option key={option._id} value={option._id}>
+                      {option.name}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-1 top-1/2 size-4 -translate-y-1/2 stroke-[1.75] text-[#171717] dark:text-[#f3f3ef]" />
+              </div>
 
               <Button
                 asChild

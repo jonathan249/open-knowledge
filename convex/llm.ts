@@ -19,13 +19,73 @@ type RelevantSource = {
   documentId: Doc<"documents">["_id"];
   documentName: string;
   text: string;
+  pageStart?: number;
+  pageEnd?: number;
+  section?: string;
+  chunkType?: "heading" | "paragraph" | "list" | "table" | "code";
   score: number;
+  vectorScore: number;
+  keywordScore: number;
 };
+
+function formatSourceContext(sources: RelevantSource[]) {
+  if (sources.length === 0) {
+    return "No relevant sources were found for this notebook.";
+  }
+
+  return sources
+    .map((source, index) => {
+      const sourceId = `S${index + 1}`;
+      const pageLabel =
+        source.pageStart !== undefined
+          ? source.pageEnd && source.pageEnd !== source.pageStart
+            ? `Pages ${source.pageStart}-${source.pageEnd}`
+            : `Page ${source.pageStart}`
+          : "Page unknown";
+
+      const metadataLine = [
+        `[${sourceId}]`,
+        `Document: ${source.documentName}`,
+        pageLabel,
+        source.section ? `Section: ${source.section}` : null,
+        source.chunkType ? `Type: ${source.chunkType}` : null,
+        `Relevance: ${source.score.toFixed(3)}`,
+      ]
+        .filter((part): part is string => Boolean(part))
+        .join(" | ");
+
+      const snippet = source.text.trim().slice(0, 1800);
+      return [metadataLine, snippet].join("\n");
+    })
+    .join("\n\n---\n\n");
+}
+
+function buildSystemPrompt(
+  sourceContext: string,
+  allowGeneralKnowledge: boolean,
+) {
+  const groundingInstruction = allowGeneralKnowledge
+    ? "You may use general world knowledge when sources are missing, but clearly label those statements as '(general knowledge)' and keep source-grounded statements prioritized."
+    : "If support is missing or weak, explicitly say you could not find supporting information in the uploaded sources.";
+
+  return [
+    "You are a notebook assistant. Answer with high factual precision and only use supported context.",
+    "When making factual claims from context, add inline citations like [S1], [S2].",
+    "Do not invent citations and do not cite sources that are not provided.",
+    groundingInstruction,
+    "Do not append a separate 'Sources' section at the end.",
+    "If multiple sources conflict, acknowledge the conflict and cite both.",
+    "Source context:",
+    sourceContext,
+  ].join("\n\n");
+}
 
 export const generateAssistantMessage = internalAction({
   args: {
     notebookId: v.id("notebooks"),
     assistantMessageId: v.id("messages"),
+    allowGeneralKnowledge: v.boolean(),
+    selectedSourceDocumentIds: v.optional(v.array(v.id("documents"))),
   },
   handler: async (ctx, args) => {
     try {
@@ -44,11 +104,15 @@ export const generateAssistantMessage = internalAction({
         .trim();
 
       const relevantSources: RelevantSource[] = lastUserMessage
-        ? await ctx.runAction(internal.sources.searchRelevantChunks, {
-            notebookId: args.notebookId,
-            query: lastUserMessage,
-            limit: 6,
-          })
+        ? args.selectedSourceDocumentIds &&
+          args.selectedSourceDocumentIds.length === 0
+          ? []
+          : await ctx.runAction(internal.sources.searchRelevantChunks, {
+              notebookId: args.notebookId,
+              query: lastUserMessage,
+              limit: 6,
+              selectedSourceDocumentIds: args.selectedSourceDocumentIds,
+            })
         : [];
 
       const sourceDocumentIds: Doc<"documents">["_id"][] = Array.from(
@@ -68,28 +132,10 @@ export const generateAssistantMessage = internalAction({
         }))
         .filter((message) => message.content.trim().length > 0);
 
-      const sourceContext =
-        relevantSources.length > 0
-          ? relevantSources
-              .map((source, index) =>
-                [
-                  `Source ${index + 1}: ${source.documentName}`,
-                  source.text,
-                ].join("\n\n"),
-              )
-              .join("\n\n---\n\n")
-          : "No relevant sources were found for this notebook.";
-
+      const sourceContext = formatSourceContext(relevantSources);
       const result = streamText({
-        model: "google/gemini-2.0-flash-lite",
-        system: [
-          "You are a helpful assistant for answering questions about the content in the notebook.",
-          "Use the provided source context whenever it is relevant.",
-          "If the answer cannot be supported by the source context, say that you could not find supporting information in the uploaded sources.",
-          "Do not append a 'Sources' section or list source document names in the message body. Source references are shown separately in the UI.",
-          "Source context:",
-          sourceContext,
-        ].join("\n\n"),
+        model: "google/gemini-3-flash",
+        system: buildSystemPrompt(sourceContext, args.allowGeneralKnowledge),
         messages: fullPrompt,
       });
 

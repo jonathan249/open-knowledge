@@ -7,5 +7,5 @@ export default async function NotebookPage({
 }) {
   const { notebookId } = await params;
 
-  return <NotebookWorkspace notebookId={notebookId} />;
+  return <NotebookWorkspace key={notebookId} notebookId={notebookId} />;
 }

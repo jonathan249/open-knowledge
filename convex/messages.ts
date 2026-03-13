@@ -7,13 +7,15 @@ export const startChatMessagePair = action({
   args: {
     notebookId: v.id("notebooks"),
     content: v.string(),
+    allowGeneralKnowledge: v.optional(v.boolean()),
+    selectedSourceDocumentIds: v.optional(v.array(v.id("documents"))),
   },
   returns: v.object({
     assistantMessageId: v.id("messages"),
   }),
   handler: async (
     ctx,
-    { notebookId, content },
+    { notebookId, content, allowGeneralKnowledge, selectedSourceDocumentIds },
   ): Promise<{ assistantMessageId: Id<"messages"> }> => {
     const trimmedContent = content.trim();
 
@@ -40,6 +42,8 @@ export const startChatMessagePair = action({
     await ctx.scheduler.runAfter(0, internal.llm.generateAssistantMessage, {
       notebookId,
       assistantMessageId,
+      allowGeneralKnowledge: allowGeneralKnowledge ?? false,
+      selectedSourceDocumentIds,
     });
 
     return { assistantMessageId };
