@@ -1,12 +1,14 @@
 import { api, internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import { internalAction } from "./_generated/server";
-import { type ModelMessage, streamText } from "ai";
+import { tool, type ModelMessage, streamText } from "ai";
 import { v } from "convex/values";
+import { z } from "zod";
 
 const MIN_CHUNK_SIZE = 20;
 const FLUSH_INTERVAL = 200;
 const MAX_BUFFER_SIZE = MIN_CHUNK_SIZE * 2;
+const TOOL_RESULT_SNIPPET_LENGTH = 1200;
 
 type MessageWithChunks = Doc<"messages"> & {
   messageChunks: Doc<"messageChunks">[];
@@ -72,6 +74,7 @@ function buildSystemPrompt(
     "You are a notebook assistant. Answer with high factual precision and only use supported context.",
     "When making factual claims from context, add inline citations like [S1], [S2].",
     "Do not invent citations and do not cite sources that are not provided.",
+    "If the initial source context is insufficient, call the searchSources tool to fetch additional notebook evidence before answering.",
     groundingInstruction,
     "Do not append a separate 'Sources' section at the end.",
     "If multiple sources conflict, acknowledge the conflict and cite both.",
@@ -114,15 +117,9 @@ export const generateAssistantMessage = internalAction({
               selectedSourceDocumentIds: args.selectedSourceDocumentIds,
             })
         : [];
-
-      const sourceDocumentIds: Doc<"documents">["_id"][] = Array.from(
-        new Set(relevantSources.map((source) => source.documentId)),
+      const sourceDocumentIdSet = new Set<Doc<"documents">["_id"]>(
+        relevantSources.map((source) => source.documentId),
       );
-
-      await ctx.runMutation(api.messages.setMessageSources, {
-        messageId: args.assistantMessageId,
-        sourceDocumentIds,
-      });
 
       const fullPrompt: ModelMessage[] = messages
         .filter((message) => message._id !== args.assistantMessageId)
@@ -133,10 +130,65 @@ export const generateAssistantMessage = internalAction({
         .filter((message) => message.content.trim().length > 0);
 
       const sourceContext = formatSourceContext(relevantSources);
+      let toolUsageCount = 0;
       const result = streamText({
-        model: "google/gemini-3-flash",
+        model: "google/gemini-3.1-flash-lite-preview",
         system: buildSystemPrompt(sourceContext, args.allowGeneralKnowledge),
         messages: fullPrompt,
+        tools: {
+          searchSources: tool({
+            description:
+              "Search uploaded notebook sources for semantically relevant chunks to support factual claims.",
+            inputSchema: z.object({
+              query: z
+                .string()
+                .min(1)
+                .max(500)
+                .describe("Natural language query to run against notebook sources."),
+              limit: z
+                .number()
+                .int()
+                .min(1)
+                .max(6)
+                .optional()
+                .describe("Maximum number of snippets to return."),
+            }),
+            execute: async ({ query, limit }) => {
+              toolUsageCount += 1;
+              const normalizedQuery = query.trim();
+              if (!normalizedQuery) {
+                return { results: [] };
+              }
+
+              const matches = await ctx.runAction(
+                internal.sources.searchRelevantChunks,
+                {
+                  notebookId: args.notebookId,
+                  query: normalizedQuery,
+                  limit: limit ?? 4,
+                  selectedSourceDocumentIds: args.selectedSourceDocumentIds,
+                },
+              );
+
+              for (const match of matches) {
+                sourceDocumentIdSet.add(match.documentId);
+              }
+
+              return {
+                results: matches.map((match) => ({
+                  documentId: match.documentId,
+                  documentName: match.documentName,
+                  pageStart: match.pageStart,
+                  pageEnd: match.pageEnd,
+                  section: match.section,
+                  chunkType: match.chunkType,
+                  relevance: Number(match.score.toFixed(3)),
+                  snippet: match.text.trim().slice(0, TOOL_RESULT_SNIPPET_LENGTH),
+                })),
+              };
+            },
+          }),
+        },
       });
 
       let buffer = "";
@@ -202,6 +254,16 @@ export const generateAssistantMessage = internalAction({
       }
 
       await flush(true);
+
+      await ctx.runMutation(api.messages.setMessageSources, {
+        messageId: args.assistantMessageId,
+        sourceDocumentIds: Array.from(sourceDocumentIdSet),
+      });
+
+      await ctx.runMutation(api.messages.setMessageToolUsage, {
+        messageId: args.assistantMessageId,
+        toolUsageCount,
+      });
 
       await ctx.runMutation(api.messages.updateMessage, {
         messageId: args.assistantMessageId,

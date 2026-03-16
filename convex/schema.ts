@@ -1,5 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { EMBEDDING_DIMENSIONS } from "./embeddingConfig";
 
 export default defineSchema({
   notebooks: defineTable({
@@ -14,6 +15,7 @@ export default defineSchema({
     role: v.union(v.literal("user"), v.literal("assistant")),
     notebookId: v.id("notebooks"),
     sourceDocumentIds: v.optional(v.array(v.id("documents"))),
+    toolUsageCount: v.optional(v.number()),
   }).index("by_notebook", ["notebookId"]),
   embeddings: defineTable({
     notebookId: v.id("notebooks"),
@@ -24,7 +26,7 @@ export default defineSchema({
     .index("by_chunkId", ["chunkId"])
     .vectorIndex("by_embedding", {
       vectorField: "embedding",
-      dimensions: 1536,
+      dimensions: EMBEDDING_DIMENSIONS,
       filterFields: ["notebookId"],
     }),
   chunks: defineTable({

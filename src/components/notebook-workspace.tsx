@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, type ChangeEvent } from "react";
-import { useQuery } from "convex/react";
+import { useMemo, useState, type ChangeEvent } from "react";
+import { useMutation, useQuery } from "convex/react";
 import { ChevronDown } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -28,7 +28,9 @@ export function NotebookWorkspace({ notebookId }: { notebookId: string }) {
   const notebook = useQuery(api.notebooks.getNotebook, {
     notebookId: typedNotebookId,
   });
+  const clearChatForNotebook = useMutation(api.messages.clearChatForNotebook);
   const notebooks = useQuery(api.notebooks.listNotebooks, {});
+  const [isClearingChat, setIsClearingChat] = useState(false);
 
   if (notebook === undefined) {
     return (
@@ -78,6 +80,26 @@ export function NotebookWorkspace({ notebookId }: { notebookId: string }) {
     router.push(`/${nextNotebookId}`);
   };
 
+  const handleClearChat = async () => {
+    if (isClearingChat) {
+      return;
+    }
+
+    const shouldClear = window.confirm(
+      "Clear all chat messages in this notebook?",
+    );
+    if (!shouldClear) {
+      return;
+    }
+
+    setIsClearingChat(true);
+    try {
+      await clearChatForNotebook({ notebookId: typedNotebookId });
+    } finally {
+      setIsClearingChat(false);
+    }
+  };
+
   return (
     <main className="min-h-screen px-4 text-[#171717] dark:bg-[#111111] dark:text-[#f3f3ef] sm:px-6">
       <div className="mx-auto flex w-full max-w-214 flex-col">
@@ -113,20 +135,32 @@ export function NotebookWorkspace({ notebookId }: { notebookId: string }) {
               </Button>
             </div>
 
-            <TabsList className="h-auto w-full justify-start gap-2 rounded-none border-b border-[#e5e5e5] bg-transparent p-0 text-[#6f6f6f] dark:border-white/10 dark:text-[#a1a1aa]">
-              <TabsTrigger
-                value="chat"
-                className="h-auto rounded-none border-b border-transparent px-2 py-1 text-sm font-normal tracking-[-0.02em] shadow-none data-[state=active]:border-[#171717] data-[state=active]:bg-transparent data-[state=active]:text-[#171717] data-[state=active]:shadow-none dark:data-[state=active]:border-[#f3f3ef] dark:data-[state=active]:text-[#f3f3ef]"
+            <div className="flex items-center justify-between gap-3 border-b border-[#e5e5e5] dark:border-white/10">
+              <TabsList className="h-auto justify-start gap-2 rounded-none border-0 bg-transparent p-0 text-[#6f6f6f] dark:text-[#a1a1aa]">
+                <TabsTrigger
+                  value="chat"
+                  className="h-auto rounded-none border-b border-transparent px-2 py-1 text-sm font-normal tracking-[-0.02em] shadow-none data-[state=active]:border-[#171717] data-[state=active]:bg-transparent data-[state=active]:text-[#171717] data-[state=active]:shadow-none dark:data-[state=active]:border-[#f3f3ef] dark:data-[state=active]:text-[#f3f3ef]"
+                >
+                  Chat
+                </TabsTrigger>
+                <TabsTrigger
+                  value="sources"
+                  className="h-auto rounded-none border-b border-transparent px-2 py-1 text-sm font-normal tracking-[-0.02em] shadow-none data-[state=active]:border-[#171717] data-[state=active]:bg-transparent data-[state=active]:text-[#171717] data-[state=active]:shadow-none dark:data-[state=active]:border-[#f3f3ef] dark:data-[state=active]:text-[#f3f3ef]"
+                >
+                  Sources
+                </TabsTrigger>
+              </TabsList>
+
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => void handleClearChat()}
+                disabled={isClearingChat}
+                className="h-auto px-2 py-1 text-sm font-normal tracking-[-0.02em] text-[#6f6f6f] hover:bg-transparent hover:text-[#171717] disabled:opacity-60 dark:text-[#a1a1aa] dark:hover:text-[#f3f3ef]"
               >
-                Chat
-              </TabsTrigger>
-              <TabsTrigger
-                value="sources"
-                className="h-auto rounded-none border-b border-transparent px-2 py-1 text-sm font-normal tracking-[-0.02em] shadow-none data-[state=active]:border-[#171717] data-[state=active]:bg-transparent data-[state=active]:text-[#171717] data-[state=active]:shadow-none dark:data-[state=active]:border-[#f3f3ef] dark:data-[state=active]:text-[#f3f3ef]"
-              >
-                Sources
-              </TabsTrigger>
-            </TabsList>
+                {isClearingChat ? "Clearing..." : "Clear chat"}
+              </Button>
+            </div>
           </div>
 
           <TabsContent value="chat" className="mt-0">

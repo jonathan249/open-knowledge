@@ -64,6 +64,7 @@ export const createMessage = mutation({
       role: args.role,
       isComplete: args.isComplete,
       sourceDocumentIds: [],
+      toolUsageCount: 0,
     });
 
     if (args.content && args.content.length > 0) {
@@ -157,5 +158,54 @@ export const updateMessage = mutation({
     await ctx.db.patch("messages", args.messageId, {
       isComplete: args.isComplete,
     });
+  },
+});
+
+export const setMessageToolUsage = mutation({
+  args: {
+    messageId: v.id("messages"),
+    toolUsageCount: v.number(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.messageId, {
+      toolUsageCount: Math.max(0, args.toolUsageCount),
+    });
+  },
+});
+
+export const clearChatForNotebook = mutation({
+  args: {
+    notebookId: v.id("notebooks"),
+  },
+  returns: v.object({
+    deletedMessages: v.number(),
+    deletedChunks: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    const messages = await ctx.db
+      .query("messages")
+      .withIndex("by_notebook", (q) => q.eq("notebookId", args.notebookId))
+      .collect();
+
+    let deletedChunks = 0;
+
+    for (const message of messages) {
+      const chunks = await ctx.db
+        .query("messageChunks")
+        .withIndex("by_messageId", (q) => q.eq("messageId", message._id))
+        .collect();
+
+      for (const chunk of chunks) {
+        await ctx.db.delete(chunk._id);
+        deletedChunks += 1;
+      }
+
+      await ctx.db.delete(message._id);
+    }
+
+    return {
+      deletedMessages: messages.length,
+      deletedChunks,
+    };
   },
 });

@@ -1,7 +1,7 @@
-import { embed, embedMany } from "ai";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
+import { embedMultipleValues, embedSingleValue } from "./embedding";
 import {
   action,
   internalAction,
@@ -11,7 +11,6 @@ import {
   query,
 } from "./_generated/server";
 
-const EMBEDDING_MODEL = "openai/text-embedding-3-small";
 const CHUNK_TARGET_LENGTH = 900;
 const CHUNK_OVERLAP = 140;
 const MIN_CHUNK_SIZE = 80;
@@ -533,11 +532,7 @@ export const ingestMarkdownSource = action({
     }
 
     const embeddingInputs = chunks.map((chunk) => buildEmbeddingInput(chunk));
-    const { embeddings } = await embedMany({
-      model: EMBEDDING_MODEL,
-      values: embeddingInputs,
-      maxParallelCalls: 4,
-    });
+    const embeddings = await embedMultipleValues(embeddingInputs, 4);
 
     const sourceChunks: SourceChunkPayload[] = embeddings.map(
       (embedding, index) => ({
@@ -600,10 +595,7 @@ export const searchRelevantChunks = internalAction({
       return [];
     }
 
-    const { embedding } = await embed({
-      model: EMBEDDING_MODEL,
-      value: expandedQuery,
-    });
+    const embedding = await embedSingleValue(expandedQuery);
 
     const vectorResults = await ctx.vectorSearch("embeddings", "by_embedding", {
       vector: embedding,

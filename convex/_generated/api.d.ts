@@ -8,6 +8,8 @@
  * @module
  */
 
+import type * as embedding from "../embedding.js";
+import type * as embeddingConfig from "../embeddingConfig.js";
 import type * as llm from "../llm.js";
 import type * as messages from "../messages.js";
 import type * as notebooks from "../notebooks.js";
@@ -20,6 +22,8 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  embedding: typeof embedding;
+  embeddingConfig: typeof embeddingConfig;
   llm: typeof llm;
   messages: typeof messages;
   notebooks: typeof notebooks;

@@ -2,7 +2,7 @@
 
 import { useAction, useQuery } from "convex/react";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { SendHorizontal, ChevronDown, Brain } from "lucide-react";
+import { SendHorizontal, ChevronDown, Brain, Wrench } from "lucide-react";
 import type { Id } from "../../convex/_generated/dataModel";
 import { api } from "../../convex/_generated/api";
 import { cn } from "@/lib/utils";
@@ -193,9 +193,18 @@ export function NotebookChat({
                     message.role === "user" && "ml-auto max-w-[85%] text-right",
                   )}
                 >
-                  <p className="mb-1 text-sm font-normal tracking-[-0.02em] text-[#9a9a9a] dark:text-[#7a7a82]">
-                    {message.role === "assistant" ? "Notebook" : "User"}
-                  </p>
+                  <div className="mb-1 text-sm font-normal tracking-[-0.02em] text-[#9a9a9a] dark:text-[#7a7a82]">
+                    <span>
+                      {message.role === "assistant" ? "Notebook" : "User"}
+                    </span>
+                    {message.role === "assistant" &&
+                    (message.toolUsageCount ?? 0) > 0 ? (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-[#e5e5e5] bg-[#f6f6f4] px-2 py-0.5 text-[11px] font-medium text-[#5f5f5f] dark:border-white/10 dark:bg-white/5 dark:text-[#a8a8b3]">
+                        <Wrench className="size-3" />
+                        Tool used
+                      </span>
+                    ) : null}
+                  </div>
                   <div className="max-w-none text-sm leading-6 text-[#171717] dark:text-[#f3f3ef]">
                     <Streamdown
                       className="max-w-none [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-1"
