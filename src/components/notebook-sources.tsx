@@ -48,6 +48,38 @@ async function extractPdfContent(file: File) {
   };
 }
 
+type UploadPhase = "uploading" | "parsing" | "indexing" | "complete";
+
+type UploadWorkflow = {
+  fileName: string;
+  isPdf: boolean;
+  phase: UploadPhase;
+};
+
+function uploadSteps(isPdf: boolean) {
+  return isPdf
+    ? [
+        "Uploading source",
+        "Parsing PDF",
+        "Chunking & embedding",
+        "Ready for chat",
+      ]
+    : ["Uploading source", "Chunking & embedding", "Ready for chat"];
+}
+
+function phaseToStepIndex(workflow: UploadWorkflow) {
+  if (workflow.isPdf) {
+    if (workflow.phase === "uploading") return 0;
+    if (workflow.phase === "parsing") return 1;
+    if (workflow.phase === "indexing") return 2;
+    return 3;
+  }
+
+  if (workflow.phase === "uploading") return 0;
+  if (workflow.phase === "indexing") return 1;
+  return 2;
+}
+
 export function NotebookSources({
   notebookId,
   selectedSourceId: selectedSourceIdProp,
@@ -69,6 +101,7 @@ export function NotebookSources({
     useState<Id<"documents"> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
+  const [workflow, setWorkflow] = useState<UploadWorkflow | null>(null);
 
   const selectedSourceId =
     selectedSourceIdProp === undefined
@@ -107,21 +140,63 @@ export function NotebookSources({
     setStatus(null);
 
     try {
-      const extraction = isPdfFile(file)
-        ? await extractPdfContent(file)
-        : { content: await file.text(), pageCount: 0, extractionWarnings: [] };
-
-      const result = await ingestMarkdownSource({
-        notebookId,
-        name: sourceNameFromFile(file),
-        content: extraction.content,
+      const sourceName = sourceNameFromFile(file);
+      const isPdf = isPdfFile(file);
+      setWorkflow({
+        fileName: file.name,
+        isPdf,
+        phase: "uploading",
       });
 
-      setStatus(
-        isPdfFile(file)
-          ? `Converted ${extraction.pageCount} PDF page${extraction.pageCount === 1 ? "" : "s"}, uploaded ${file.name}, and created ${result.chunkCount} searchable chunks.${extraction.extractionWarnings.length > 0 ? ` Notes: ${extraction.extractionWarnings.join(" ")}` : ""}`
-          : `Uploaded ${file.name} and created ${result.chunkCount} searchable chunks.`,
-      );
+      if (isPdf) {
+        setWorkflow({
+          fileName: file.name,
+          isPdf: true,
+          phase: "parsing",
+        });
+        const extraction = await extractPdfContent(file);
+
+        setWorkflow({
+          fileName: file.name,
+          isPdf: true,
+          phase: "indexing",
+        });
+        const result = await ingestMarkdownSource({
+          notebookId,
+          name: sourceName,
+          content: extraction.content,
+        });
+
+        setWorkflow({
+          fileName: file.name,
+          isPdf: true,
+          phase: "complete",
+        });
+        setStatus(
+          `Converted ${extraction.pageCount} PDF page${extraction.pageCount === 1 ? "" : "s"}, uploaded ${file.name}, and created ${result.chunkCount} searchable chunks.${extraction.extractionWarnings && extraction.extractionWarnings.length > 0 ? ` Notes: ${extraction.extractionWarnings.join(" ")}` : ""}`,
+        );
+      } else {
+        const content = await file.text();
+        setWorkflow({
+          fileName: file.name,
+          isPdf: false,
+          phase: "indexing",
+        });
+        const result = await ingestMarkdownSource({
+          notebookId,
+          name: sourceName,
+          content,
+        });
+        setWorkflow({
+          fileName: file.name,
+          isPdf: false,
+          phase: "complete",
+        });
+        setStatus(
+          `Uploaded ${file.name} and created ${result.chunkCount} searchable chunks.`,
+        );
+      }
+
       event.target.value = "";
     } catch (caughtError) {
       setError(
@@ -188,11 +263,49 @@ export function NotebookSources({
           <div className="flex items-center gap-2 text-sm text-[#6f6f6f] dark:text-[#a1a1aa]">
             <Upload className="size-4" />
             <span>
-              Supported today: Markdown, plain text, and text-based PDF uploads.
-              Scanned PDFs use local OCR when <code>pdftoppm</code> and{" "}
-              <code>tesseract</code> are installed.
+              Supported today: Markdown, plain text, and PDF uploads. PDFs are
+              converted to markdown with AI parsing before indexing.
             </span>
           </div>
+
+          {workflow ? (
+            <div className="rounded-xl border border-[#e5e5e5] bg-[#fafaf9] p-3 dark:border-white/10 dark:bg-[#111111]">
+              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-[#6f6f6f] dark:text-[#a1a1aa]">
+                Upload workflow · {workflow.fileName}
+              </p>
+              <ol className="space-y-2">
+                {uploadSteps(workflow.isPdf).map((step, index) => {
+                  const activeStep = phaseToStepIndex(workflow);
+                  const isDone = index < activeStep;
+                  const isActive = index === activeStep;
+                  return (
+                    <li key={step} className="flex items-center gap-3 text-sm">
+                      <span
+                        className={`inline-flex size-6 items-center justify-center rounded-full border text-xs font-semibold ${
+                          isDone
+                            ? "border-[#171717] bg-[#171717] text-white dark:border-[#f3f3ef] dark:bg-[#f3f3ef] dark:text-[#111111]"
+                            : isActive
+                              ? "border-[#171717] text-[#171717] dark:border-[#f3f3ef] dark:text-[#f3f3ef]"
+                              : "border-[#cfcfcb] text-[#8a8a85] dark:border-white/15 dark:text-[#6f6f6f]"
+                        }`}
+                      >
+                        {isDone ? "✓" : index + 1}
+                      </span>
+                      <span
+                        className={
+                          isDone || isActive
+                            ? "text-[#171717] dark:text-[#f3f3ef]"
+                            : "text-[#8a8a85] dark:text-[#6f6f6f]"
+                        }
+                      >
+                        {step}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ol>
+            </div>
+          ) : null}
 
           {error ? (
             <p className="text-sm text-[#d22f2f] dark:text-[#ff8a8a]">{error}</p>

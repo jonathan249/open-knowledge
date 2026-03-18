@@ -42,15 +42,12 @@ export async function POST(request: Request) {
 
   try {
     const pdf = await convertPdfToMarkdown(await file.arrayBuffer());
-
     return NextResponse.json(pdf);
   } catch (error) {
     return NextResponse.json(
       {
         error:
-          error instanceof Error
-            ? error.message
-            : "Could not convert this PDF.",
+          error instanceof Error ? error.message : "Could not convert this PDF.",
       },
       { status: 422 },
     );
